@@ -1,0 +1,82 @@
+#!/bin/bash
+
+
+# Concatenate reads from different lanes (if necessary)
+
+$ cat  <sample>.lane1.R1.fastq.gz  <sample>.lane2.R1.fastq.gz  >  <sample>_cat.R1.fastq.gz
+$ cat  <sample>.lane1.R2.fastq.gz  <sample>.lane2.R2.fastq.gz  >  <sample>_cat.R2.fastq.gz
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Trimming adapters with NGmerge:
+
+NGmerge \
+-a \
+-1 <sample>.R1.fasta.gz \
+-2 <sample>.R2.fasta.gz \
+-o outputname
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Map reads with Bowtie2
+
+bowtie2 -x hm \
+-X 2000 \
+-1 <ngmergeoutput>.R1.fastq.gz \
+-2 <ngmergeoutput>.R2.fastq.gz \
+-p 31 | samtools view -b -S - | samtools sort - outfilename
+
+samtools index outfilename.bam
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Remove mitochondrial genome with removeChrom 
+
+# scaffold2257 should be changed to whatever designates the MT genome in your input fasta file 
+
+samtools view -h <inputfiltename>.bam | removeChrom - - scaffold2257 | samtools view -b - | samtools sort - -o outputname_noMt_sorted.bam
+
+samtools index outputname_noMt_sorted.bam
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Remove duplicates with picard
+
+java -jar $PICARD_TOOLS_HOME/picard.jar MarkDuplicates I=<inputfilname_noMT>.bam O=inputfilname_noMT_nodups.bam M=inputnoMTfiledups.txt REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT
+
+samtools index inputfilname_noMT_nodups.bam
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Downsample bam file to desired sequencing depth
+
+# P= percent of reads that you want to keep.  So in this case, you are telling picard to keep 41% of the reads.  So run flagstat on your final no MT and no DUPS .bam file to get the total # of mapped reads, then downsample using this number as 100% #
+
+java -jar /n/sw/fasrcsw/apps/Core/picard/2.9.0-fasrc01/picard.jar DownsampleSam I=<inputbamfile>_noMT_noDups.bam O=<inputbamfile>_noMT_noDups.bam_down.bam VALIDATION_STRINGENCY=SILENT CREATE_INDEX=TRUE P=0.41
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Call peaks with MACS2
+
+macs2 callpeak \
+ --treatment <inputfilename>_noMT_noDups_down.bam \
+ -q 0.05  \
+ --gsize  800000000 \
+  --nomodel \
+  --extsize 200 /
+  --shift -100 \
+  --nolambda  \
+  -n outputfilename \
+  --keep-dup all
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Filter peaks that fall within repetitive regions
+
+
+# Use the summits file from MACS2 so only those peaks whose summits overlap with a repeat are excluded   
+
+$ bedtools intersect -wa -v -a <inputfile>summits.bed -b hmi_repeats.gff  > <outputfile>summits_norepeats.bed
+
+# The resulting file is still only the summit of the peaks.  To recover the complete peak as originally defined by MACS2, overlap all new summits with the original peaks, report the value as reported in a (-wa flag) 
+
+$ bedtools intersect -wa -a <original_narrowpeak_file_from_MACS>.narrowPeak -b <outputfile>summits_norepeats.bed > <final_file_norepeats_based_on_summits>.narrowPeak
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
