@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Running Salmon
+
+salmon quant -i <salmon_index> -l A -r <single_end_reads>.fastq -p 4 -o  <reads>_salmon_output_FINAL
+
+----------------------------------------------------------------------------------------------------------
+# DE with limma-voom
+
+# construct matrix with TPM for all samples from Salmon output.  Then proceed:
+
+salmon_data<-read.table("input_table.txt",header=TRUE,row.names=1)
+
+rnaseqMatrix=round(salmon_data)
+
+cpm_filtered_matrix=rnaseqMatrix
+
+DGE<-DGEList(cpm_filtered_matrix)
+
+DGE<-calcNormFactors(DGE,method =c("TMM"))
+
+#s2c is a table that designates the samples
+s2c_new<-read.table("s2c_new.txt",header=TRUE,row.names=1)
+
+values<-s2c_new$type
+
+plotMDS(DGE,top=500,col=ifelse(values=="low","blue","red"),gene.selection="common")
+
+design=model.matrix(~type, data=s2c_new)
+
+design
+
+v <- voom(DGE, design=design, plot=TRUE)
+
+vwts <- voomWithQualityWeights(DGE, design=design,normalization="none", plot=TRUE)
+
+fit=lmFit(vwts,design)
+
+fit=eBayes(fit,robust=TRUE)
+
+summary(decideTests(fit,adjust.method="fdr",p.value = 0.05))
+
+topTable(fit, adjust="BH",resort.by="P")
+
+all_genes<-topTable(fit, adjust="BH",coef="type1h", p.value=1, number=Inf ,resort.by="P")
+
+
