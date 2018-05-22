@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# metadata is a spreadsheet that contains all of the sample information, see Diffbind manual for more detail
+> regeneration_final <- dba(sampleSheet = "metadata.csv")
+
+# count reads
+> regeneration_final <- dba.count(regeneration_final, summits = 250)
+
+# to create a file with the full matrix of counts.  If not desired, skip this step
+> counts <- dba.peakset(regeneration_final, bRetrieve=TRUE, writeFile="readscores.txt"
+
+# establish the contrast
+> regeneration_final <- dba.contrast(regeneration_final, minMembers=2, categories = DBA_CONDITION)
+
+> regeneration_final <- dba.analyze(regeneration_final)
+
+# to report different FDR cutoffs, use th=1, for example regeneration_final.DB <- dba.report(regeneration_final, th=1) 
+> regeneration_final.DB <- dba.report(regeneration_final)
+
+> write.csv(regeneration_final.DB, “final_file_name.csv”)
+
+
+
