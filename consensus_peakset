@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#compare each timepoint to the 0 hpa control
+
+> regeneration_final <- dba(sampleSheet = "diffbind_tail_metadata_0v3.csv")
+
+> regeneration_final <- dba.count(regeneration_final, summits = 250)
+
+> counts <- dba.peakset(regeneration_final, bRetrieve = TRUE, writeFile = “diffbind_0v3.txt")
+
+# repeat this for all comparisons (e.g. 0v6, 0v12…)
+
+# Filter out any negative numbers from the second column or bedtools won’t be work.  Rename each file .bed
+
+# combine all of the peaks from all comparisons
+
+$ cat 0v3.bed 0v6.bed 0v12.bed 0v24.bed 0v48.bed > regeneration_peaks_combined.bed
+
+# sort for bedtools 
+
+$ sort -k1,1 -k2,2n regeneration_peaks_combined.bed > regeneration_peaks_combined_sorted.bed
+
+$ module load bedtools
+
+# merge overlapping peaks to create consensus peakset of all regeneration induced peaks
+
+$ bedtools merge -i regeneration_peaks_combined_sorted_FINAL.bed > regeneration_peaks_consensus_FINAL.bed
+
