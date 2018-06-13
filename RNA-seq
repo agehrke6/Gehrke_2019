@@ -2,46 +2,50 @@
 
 # Running Salmon
 
-salmon quant -i <salmon_index> -l A -r <single_end_reads>.fastq -p 4 -o  <reads>_salmon_output_FINAL
+salmon quant -i <salmon_index> --numBootstraps 100 -l A -r <single_end_reads>.fastq -p 4 -o  <reads>_salmon_output_FINAL
 
 ----------------------------------------------------------------------------------------------------------
-# DE with limma-voom
+# DE with sleuth
 
-# construct matrix with TPM for all samples from Salmon output.  Then proceed:
+#reminder: salmon has to be run with bootstraps in order to be converted to kallisto format
 
-salmon_data<-read.table("input_table.txt",header=TRUE,row.names=1)
+#convert salmon output to kallisto format.  Each file listed here is folder straight from salmon output, with a .sf file inside
+> sfdirs <-  c("0h_rep1_tail/", "0h_rep2_tail/","0h_rep3_tail/","1h_rep1_tail/","1h_rep2_tail/","1h_rep3_tail/","3h_rep1_tail/","3h_rep2_tail/","3h_rep3_tail/","6h_rep1_tail/","6h_rep2_tail/","6h_rep3_tail/","12h_rep1_tail/","12h_rep2_tail/","12h_rep3_tail/")
 
-rnaseqMatrix=round(salmon_data)
+> prepare_fish_for_sleuth(sfdirs)
 
-cpm_filtered_matrix=rnaseqMatrix
+> sample_id <- dir(file.path("/Users/agehrke/desktop/ATAC_final_files/clean_final_files/bam_master_folder/wasabi/"))
 
-DGE<-DGEList(cpm_filtered_matrix)
+> kal_dirs <- file.path("/Users/agehrke/desktop/ATAC_final_files/clean_final_files/bam_master_folder/wasabi/", sample_id)
 
-DGE<-calcNormFactors(DGE,method =c("TMM"))
+#move s2c.csv file into folder before running this command
+> s2c<-read.table("/Users/agehrke/desktop/ATAC_final_files/clean_final_files/bam_master_folder/wasabi/dme_elev_samples.csv",header = TRUE, stringsAsFactors=FALSE)
 
-#s2c is a table that designates the samples
-s2c_new<-read.table("s2c_new.txt",header=TRUE,row.names=1)
+> s2c <- mutate(s2c, path = kal_dirs)
 
-values<-s2c_new$type
+> library(sleuth)
 
-plotMDS(DGE,top=500,col=ifelse(values=="low","blue","red"),gene.selection="common")
+> so <- sleuth_prep(s2c, extra_bootstrap_summary = TRUE,read_bootstrap_tpm=TRUE)
 
-design=model.matrix(~type, data=s2c_new)
+> so <- sleuth_prep(s2c, extra_bootstrap_summary = TRUE,read_bootstrap_tpm=TRUE)
 
-design
+> so <- sleuth_fit(so, ~condition, 'full')
 
-v <- voom(DGE, design=design, plot=TRUE)
+> so <- sleuth_fit(so, ~1, 'reduced')
 
-vwts <- voomWithQualityWeights(DGE, design=design,normalization="none", plot=TRUE)
+> so <- sleuth_lrt(so, 'reduced', 'full')
 
-fit=lmFit(vwts,design)
+> sleuth_table <- sleuth_results(so, 'reduced:full', 'lrt', show_all = TRUE)
 
-fit=eBayes(fit,robust=TRUE)
+> temphigh<-s2c$sample[s2c$condition=="0h"]
+> templow<-s2c$sample[s2c$condition=="1h"]
+> hiraw<-subset(so$obs_raw,so$obs_raw$sample %in% temphigh)
+> lowraw<-subset(so$obs_raw,so$obs_raw$sample %in% templow)
+> highmeans<-aggregate(tpm~target_id,data=hiraw,FUN=function(x) c(mean=mean(x)))
+> colnames(highmeans)<-c("target_id","tpm_high")
+> lowmeans<-aggregate(tpm~target_id,data=lowraw,FUN=function(x) c(mean=mean(x)))
+> colnames(lowmeans)<-c("target_id","tpm_low")
+> merged_means<-merge(lowmeans,highmeans,by=c("target_id"))
+> sleuth_table_wTPM<-left_join(sleuth_table,merged_means)
 
-summary(decideTests(fit,adjust.method="fdr",p.value = 0.05))
-
-topTable(fit, adjust="BH",resort.by="P")
-
-all_genes<-topTable(fit, adjust="BH",coef="type1h", p.value=1, number=Inf ,resort.by="P")
-
-
+> write.csv(sleuth_table_wTPM, "sleuth_0v1_wTMP_FINAL.csv")
