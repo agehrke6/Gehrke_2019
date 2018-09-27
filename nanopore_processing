@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#nanopore reads come in fast5 format, in a folder called "fast5".  Inside this folder are a bunch of different subdirectories that have the reads binned.  Can either run the basecalling algorith as an array to do each folder separately (takes less time), or run albacore with the recursive flag which looks into each folder.  From what I can tell, it would take almost 2 weeks to run the basecalling with the recursive flag so its probably better to do the array and concatenate later.
+# nanopore reads come in fast5 format, in a folder called "fast5".  Inside this folder are a bunch of different subdirectories that have the reads binned.  Can either run the basecalling algorith as an array to do each folder separately (takes less time), or run albacore with the recursive flag which looks into each folder.  From what I can tell, it would take almost 2 weeks to run the basecalling with the recursive flag so its probably better to do the array and concatenate later.
 
-#running the basecalling program Albacore
+# running the basecalling program Albacore
+# array program took < 1 day to complete
 
 #!/bin/bash
 #SBATCH -J "albacore_array_run"
