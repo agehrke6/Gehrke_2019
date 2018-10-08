@@ -53,7 +53,28 @@ cat *.fastq >> /n/regal/srivastava_lab/gehrke/final_albacore_combined.fastq
 done
 
 --------------------------------------------------------------------------------------------------------------
+# program to get stats on nanopore
+# slurm script is sbatch_nanoplot.sh
 
+#!/bin/bash
+#SBATCH -J "NanoPlot"
+#SBATCH -n 4               # Use n cores for one job
+#SBATCH -t 0-12:00                # Runtime in D-HH:MM
+#SBATCH -p shared                # Partition to submit to
+#SBATCH --mem=24G            # Memory pool for all cores
+#SBATCH -o outfile.%A.out	# File to which STDOUT will be written
+#SBATCH -e outfile.%A.err	# File to which STDERR will be written
+#SBATCH --mail-type=ALL           # Type of email notification- BEGIN,END,FAIL,ALL
+#SBATCH --mail-user=andrew_gehrke@fas.harvard.edu # Email to which notifications will be sent
+
+# to get to the python environment that has NanoFilt, might need to type "source activate albacore" first
+module load Anaconda/5.0.1-fasrc02
+source activate albacore
+
+# Run
+NanoPlot -t 4 --fastq /n/regal/srivastava_lab/gehrke/final_albacore_combined_COMPLETE.fastq -o /n/regal/srivastava_lab/gehrke/nanplot_output  --plots hex dot
+
+--------------------------------------------------------------------------------------------------------------
 # potentially optional: filtering the reads with NanoFilt:
 # script is sbatch_nanofilt.sh
 # to get to the python environment that has NanoFilt, might need to type "source activate albacore" first
