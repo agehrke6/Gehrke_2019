@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#align mate-pair reads with smalt.  I couldnt get REAPR to run with alignment files from any other programs  
+#Make sure the mate-pair reads are in the correct orientation or downstream wont work.  I had to rc the raw reads in this case, the insert size of reapr pipeline should show correct library sizes.  
+
+#!/bin/bash
+
+#SBATCH -J smalt_full_alignment
+#SBATCH -N 1                      # Ensure that all cores are on one machine
+#SBATCH -n 32                # Use n cores for one job
+#SBATCH -t 7-00:00                # Runtime in D-HH:MM
+#SBATCH -p shared                # Partition to submit to
+#SBATCH --mem=10GB            # Memory pool for all cores
+#SBATCH -o outfile.%A.out       # File to which STDOUT will be written
+#SBATCH -e outfile.%A.err       # File to which STDERR will be written
+#SBATCH --mail-type=ALL           # Type of email notification- BEGIN,END,FAIL,ALL
+#SBATCH --mail-user=andrew_gehrke@fas.harvard.edu # Email to which notifications will be sent
+
+module load centos6/0.0.1-fasrc01
+module load ncf/1.0.0-fasrc01
+module load Reapr/1.0.18-fasrc01
+module load samtools/0.1.19-fasrc01
+
+
+reapr smaltmap /net/fs2k02/srv/export/srivastava_lab/share_root/ATAC_data/ATAC_DoveTail_Data/raw_reads_cat/hmi_genome.fa long_reads_cat_F_rc.fq long_reads_cat_R_rc.fq long_mapped_rc_redo.bam
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Run REAPR, main input is the smalt alignment.  See REAPR walkthrough for details. 
+
+#!/bin/bash
+
+#SBATCH -J reapr_pipeline
+#SBATCH -N 1                      # Ensure that all cores are on one machine
+#SBATCH -n 32                # Use n cores for one job
+#SBATCH -t 7-00:00                # Runtime in D-HH:MM
+#SBATCH -p shared                # Partition to submit to
+#SBATCH --mem=24G            # Memory pool for all cores
+#SBATCH -o outfile.%A.out       # File to which STDOUT will be written
+#SBATCH -e outfile.%A.err       # File to which STDERR will be written
+#SBATCH --mail-type=ALL           # Type of email notification- BEGIN,END,FAIL,ALL
+#SBATCH --mail-user=andrew_gehrke@fas.harvard.edu # Email to which notifications will be sent
+
+module load centos6/0.0.1-fasrc01
+module load ncf/1.0.0-fasrc01
+module load Reapr/1.0.18-fasrc01
+module load samtools/0.1.19-fasrc01
+
+
+reapr pipeline /net/fs2k02/srv/export/srivastava_lab/share_root/ATAC_data/ATAC_DoveTail_Data/raw_reads_cat/hmi_genome.fa /n/regal/srivastava_lab/gehrke/mate_pair_raw_read/long_mapped_rc_redo.bam /n/regal/srivastava_lab/gehrke/reapr_perfect_map_FINAL perfect
